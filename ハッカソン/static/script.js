@@ -409,12 +409,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Audio Functions ---
     function playAudioForTurn(turn) {
         let audioFile = '';
-        if (turn === 1) {
-            audioFile = '/audio/beat_slow.mp3'; // 心拍数が遅い音
-        } else if (turn === 3) {
-            audioFile = '/audio/beat_high.mp3'; // 心拍数が速い音
+        if (turn < 6) {
+            audioFile = '/audio/beat_slow.mp3'; // Play slow heartbeat sound for every turn except the last
         } else if (turn === 6) {
-            audioFile = '/audio/beat_stop.mp3'; // 心停止の音
+            audioFile = '/audio/beat_stop.mp3'; // Play stop heartbeat sound at the end
         }
 
         if (audioFile) {
