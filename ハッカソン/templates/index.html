@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>終末医療シミュレーションゲーム</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>終末医療シミュレーション</h1>
+        <div class="game-area">
+            <div class="settings">
+                <label>患者の基本設定を選択してください:</label>
+                <div class="precondition-options">
+                    <button class="precondition-btn" data-precondition="A">設定 A</button>
+                    <button class="precondition-btn" data-precondition="B">設定 B</button>
+                    <button class="precondition-btn" data-precondition="C">設定 C</button>
+                </div>
+                <p id="selected-precondition-text" class="selected-precondition-display" style="display: none;"></p> 
+                <p id="turn-counter">残りターン: 6</p> 
+            </div>
+
+            <!-- Image Display Area -->
+            <div id="image-display" class="image-display-area">
+                <!-- Images will be loaded here -->
+            </div>
+            <!-- End Image Display Area -->
+
+            <div class="chat-history" id="chat-history">
+                <!-- チャット履歴がここに追加されます -->
+                <div class="message bot-message">
+                    <p>患者さんに話しかけてください。</p>
+                </div>
+            </div>
+
+            <div id="suggestion-buttons-area" class="suggestion-buttons">
+                <!-- Suggestion buttons will be added here by JavaScript -->
+            </div>
+
+            <div class="chat-input">
+                <input type="text" id="prompt-input" placeholder="患者へのメッセージを入力...">
+                <button id="send-button">送信 (Enter)</button>
+            </div>
+
+            <!-- Final Score/Review Area (Initially Hidden) -->
+            <div id="final-score-area" class="final-score-container" style="display: none;">
+                <h2>ゲーム終了</h2>
+                <p>患者は安らかに眠りにつきました。</p>
+                <div id="score-display">計算中...</div>
+                <div id="review-display"></div>
+                <div id="feedback-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

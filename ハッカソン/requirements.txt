@@ -1,0 +1,3 @@
+openai>=1.0.0 # openaiライブラリのバージョンを指定
+Flask>=2.0.0   # Flask Webフレームワークを追加
+requests>=2.20.0 # HTTPリクエスト用ライブラリを追加
