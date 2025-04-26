@@ -321,6 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             currentTurn++;
             updateTurnCounter();
+            playAudioForTurn(currentTurn); // Play audio for the current turn
             if (currentTurn < 6) {
                 enableInput();
                 displaySuggestions(currentTurn); // Change here
@@ -445,6 +446,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     // --- End Suggestion Button Functions ---
+
+    // --- Audio Functions ---
+    function playAudioForTurn(turn) {
+        let audioFile = '';
+        if (turn < 6) {
+            audioFile = '/audio/beat_slow.mp3'; // Play slow heartbeat sound for every turn except the last
+        } else if (turn === 6) {
+            audioFile = '/audio/beat_stop.mp3'; // Play stop heartbeat sound at the end
+        }
+
+        if (audioFile) {
+            const audio = new Audio(audioFile);
+            audio.play();
+        }
+    }
+    // --- End Audio Functions ---
 
     // --- Event Listeners ---
     sendButton.addEventListener('click', handleSendMessage);
