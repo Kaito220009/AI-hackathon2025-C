@@ -43,6 +43,11 @@ def static_files(filename):
     """Serves static files from the static directory."""
     return send_from_directory('static', filename)
 
+@app.route('/audio/<path:filename>')
+def audio_files(filename):
+    """Serves audio files from the audio directory."""
+    return send_from_directory('audio', filename)
+
 def _send_tts_request_thread(text):
     """Runs the TTS request in a separate thread."""
     if not text:

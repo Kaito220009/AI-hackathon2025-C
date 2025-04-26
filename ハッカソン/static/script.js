@@ -280,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             currentTurn++;
             updateTurnCounter();
+            playAudioForTurn(currentTurn); // Play audio for the current turn
             if (currentTurn < 6) {
                 enableInput();
                 displaySuggestions(currentTurn);
@@ -404,6 +405,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     // --- End Suggestion Button Functions ---
+
+    // --- Audio Functions ---
+    function playAudioForTurn(turn) {
+        let audioFile = '';
+        if (turn === 1) {
+            audioFile = '/audio/beat_slow.mp3'; // 心拍数が遅い音
+        } else if (turn === 3) {
+            audioFile = '/audio/beat_high.mp3'; // 心拍数が速い音
+        } else if (turn === 6) {
+            audioFile = '/audio/beat_stop.mp3'; // 心停止の音
+        }
+
+        if (audioFile) {
+            const audio = new Audio(audioFile);
+            audio.play();
+        }
+    }
+    // --- End Audio Functions ---
 
     // --- Event Listeners ---
     sendButton.addEventListener('click', handleSendMessage);
