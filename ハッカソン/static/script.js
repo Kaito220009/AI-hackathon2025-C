@@ -13,10 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Game Info & Results
     const turnCounterDisplay = document.getElementById('turn-counter');
-    const finalScoreArea = document.getElementById('final-score-area');
+    const finalScoreArea = document.getElementById('final-score-container');
     const finalScoreDisplay = document.getElementById('score-display');
     const finalReviewDisplay = document.getElementById('review-display');
     const finalFeedbackDisplay = document.getElementById('feedback-display');
+    const commentDisplay = document.getElementById('comment-display'); // Added
 
     // --- Constants & State Variables ---
     const ollamaModel = 'gemma3:27b';
@@ -38,29 +39,65 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Suggestion Data --- 
     const turnSuggestions = {
-        1: { // 初対面
-            positive: ["お会いでき嬉しいです", "こちらこそ光栄です", "安心してくださいね", "よろしくお願いします", "お話伺えて光栄です"],
-            negative: ["まず測定します", "検査から始めます", "書類にご記入を", "機器準備します", "次の予定です"]
+        0: { // 初対面
+            positive: [
+                "お会いできて嬉しいです",
+                "よろしくお願いします",
+                "ご挨拶できて光栄です",
+                "今日はどうですか？",
+                "安心してください"
+            ],
+            negative: []
         },
-        2: { // 体調確認
-            positive: ["つらさ教えてください", "詳しく聞かせて", "どこが痛いですか？", "いつからですか？", "楽な時もありますか？"],
-            negative: ["呼吸数を測ります", "深呼吸は控えて", "装置を装着します", "数値を記録します", "動かないでください"]
+        1: { // 体調確認
+            positive: [
+                "体調はいかがですか？",
+                "つらいところはありますか？",
+                "痛みはどうですか？",
+                "気になることは？",
+                "眠れていますか？"
+            ],
+            negative: []
         },
-        3: { // 感情ケア
-            positive: ["お気持ち分かります", "いつでも聞きます", "一緒に考えましょう", "寂しくないですか？", "支えますよ"],
-            negative: ["余命を説明します", "次は検査結果です", "治療方針を話します", "記録に移ります", "時間がありません"]
+        2: { // 感情ケア
+            positive: [
+                "お気持ち分かります",
+                "不安なことはありますか？",
+                "何か話したいことは？",
+                "心配なことは？",
+                "無理しないでください"
+            ],
+            negative: []
         },
-        4: { // 思い出共有
-            positive: ["思い出聞かせて", "何が好きでしたか？", "素敵なお話ですね", "もっと教えてください", "心が温まります"],
-            negative: ["面会制限あります", "許可が必要です", "感染対策します", "他の方もいます", "規則に従います"]
+        3: { // 思い出共有
+            positive: [
+                "思い出を聞かせてください",
+                "好きなことは何ですか？",
+                "昔の話を教えてください",
+                "楽しかったことは？",
+                "印象に残っていることは？"
+            ],
+            negative: []
         },
-        5: { // 最期の願い
-            positive: ["希望を叶えます", "今すぐ手配します", "何が必要ですか？", "諦めず挑戦しましょう", "全力で支えます"],
-            negative: ["外出は難しいです", "写真で代替いかが？", "室内で我慢を", "制限があります", "ベッド上で対応"]
+        4: { // 最期の願い
+            positive: [
+                "何か希望はありますか？",
+                "やりたいことは？",
+                "叶えたい願いは？",
+                "お手伝いできることは？",
+                "望みを教えてください"
+            ],
+            negative: []
         },
-        6: { // 別れの言葉
-            positive: ["寄り添えて光栄です", "お話でき嬉しいです", "安らかにお過ごしを", "いつでも戻ります", "ありがとうございました"],
-            negative: ["次のケアに移ります", "失礼します", "時間となりました", "記録を完了します", "終了します"]
+        5: { // 別れの言葉
+            positive: [
+                "ありがとうございました",
+                "お大事にしてください",
+                "またお話ししましょう",
+                "ご家族によろしくお伝えください",
+                "お疲れ様でした"
+            ],
+            negative: []
         }
     };
 
@@ -133,8 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateTurnCounter() {
-        // 表示は「現在ターン / 6」
-        turnCounterDisplay.textContent = `${currentTurn} / 6`;
+        // 表示は「現在ターン+1 / 6」（内部は0始まりだが表示は1始まり）
+        turnCounterDisplay.textContent = `${currentTurn + 1} / 6`;
     }
 
     function selectPrecondition(key) {
@@ -178,56 +215,58 @@ document.addEventListener('DOMContentLoaded', () => {
         // Enable chat input now that a precondition is set
         enableInput();
         addMessage('system', `患者設定 ${key} を選択しました。対話を開始してください。`);
-        displaySuggestions(1); // Show initial suggestions (remains turn 1)
+        displaySuggestions(0); // プロファイル選択時に初期テンプレ（ターン0）を表示
     }
 
     async function getScoreAndReview() {
-        console.log("Requesting score...");
-        const finalScoreArea = document.getElementById('final-score-area');
+        const finalScoreArea = document.getElementById('final-score-container');
         const finalScoreDisplay = document.getElementById('score-display');
         const finalReviewDisplay = document.getElementById('review-display');
         const finalFeedbackDisplay = document.getElementById('feedback-display');
-        
-        if (!finalScoreArea || !finalScoreDisplay || !finalReviewDisplay || !finalFeedbackDisplay) {
+        const commentDisplay = document.getElementById('comment-display');
+        if (!finalScoreArea || !finalScoreDisplay || !finalReviewDisplay || !finalFeedbackDisplay || !commentDisplay) {
             console.error("One or more final score display elements not found.");
             return;
         }
-
         finalScoreArea.style.display = 'block';
         finalScoreDisplay.textContent = "計算中...";
         finalReviewDisplay.textContent = "";
         finalFeedbackDisplay.textContent = "";
-
+        commentDisplay.textContent = "";
         try {
             const response = await fetch('/calculate-score', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    conversationHistory: conversationHistory, // Send the recorded history
-                    preconditionKey: selectedPreconditionKey
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ conversationHistory: conversationHistory, preconditionKey: selectedPreconditionKey })
             });
-
+            if (!response.ok) throw new Error('サーバーエラー');
             const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || `スコアリングサーバーエラー: ${response.status}`);
-            }
-
-            // Display results
-            finalScoreDisplay.textContent = data.score !== undefined ? `${data.score} / 100` : "スコアなし";
-            finalReviewDisplay.textContent = data.review || "レビューはありません。";
-            finalFeedbackDisplay.textContent = data.feedback || "フィードバックはありません。";
+            showScoreAndReview(data);
             console.log("Score received:", data);
-
         } catch (error) {
-            console.error('Scoring Error:', error);
             finalScoreDisplay.textContent = "評価エラー";
             finalReviewDisplay.textContent = `スコアの取得に失敗しました: ${error.message}`;
             finalFeedbackDisplay.textContent = "";
+            commentDisplay.textContent = "";
         }
+    }
+
+    function showScoreAndReview(data) {
+        const finalScoreArea = document.getElementById('final-score-container');
+        if (finalScoreArea) finalScoreArea.style.display = 'block';
+        const commentDiv = document.getElementById('comment-display');
+        if (data.comment) {
+            commentDiv.textContent = data.comment;
+            commentDiv.style.display = 'block';
+        } else {
+            commentDiv.style.display = 'none';
+        }
+        const finalScoreDisplay = document.getElementById('score-display');
+        const finalReviewDisplay = document.getElementById('review-display');
+        const finalFeedbackDisplay = document.getElementById('feedback-display');
+        finalScoreDisplay.textContent = data.score !== undefined ? `${data.score} / 100` : "スコアなし";
+        finalReviewDisplay.textContent = data.review || "レビューはありません。";
+        finalFeedbackDisplay.textContent = data.feedback || "フィードバックはありません。";
     }
 
     async function endGameSequence() { // Make async again
@@ -240,16 +279,18 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll down
 
         // Re-enable score display area and call the scoring function
-        const finalScoreArea = document.getElementById('final-score-area');
+        const finalScoreArea = document.getElementById('final-score-container');
         if (finalScoreArea) {
              finalScoreArea.style.display = 'block'; // Ensure it's visible
              // Reset displays before getting score
              const scoreDisplay = document.getElementById('score-display');
              const reviewDisplay = document.getElementById('review-display');
              const feedbackDisplay = document.getElementById('feedback-display');
+             const commentDisplay = document.getElementById('comment-display');
              if(scoreDisplay) scoreDisplay.textContent = '計算中...'; else console.error("Score display element missing");
              if(reviewDisplay) reviewDisplay.textContent = ''; else console.error("Review display element missing");
              if(feedbackDisplay) feedbackDisplay.textContent = ''; else console.error("Feedback display element missing");
+             if(commentDisplay) commentDisplay.textContent = ''; else console.error("Comment display element missing");
         } else {
             console.error("Final score area element not found.");
         }
@@ -282,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTurnCounter();
             if (currentTurn < 6) {
                 enableInput();
-                displaySuggestions(currentTurn);
+                displaySuggestions(currentTurn); // Change here
             } else if (currentTurn === 6) {
                 // 6/6のAI応答が表示された直後に評価と終了処理
                 getScoreAndReview();

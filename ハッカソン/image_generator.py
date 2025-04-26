@@ -5,6 +5,8 @@ import requests
 import json
 from flask import Flask, request, jsonify, render_template, url_for, send_from_directory
 import urllib.parse 
+import threading
+from datetime import datetime
 
 # --- Configuration ---
 OLLAMA_API_URL = "http://localhost:11434/api/generate"
@@ -30,6 +32,8 @@ PRECONDITION_TEXTS = {
 
 
 app = Flask(__name__)
+
+RANKING_FILE = 'ranking.json'
 
 # --- Flask Routes ---
 
@@ -113,12 +117,17 @@ def chat_with_ollama():
     }
 
     try:
-        print(f"Sending request to Ollama ({OLLAMA_API_URL}) with model {ollama_chat_model}")
+        print(f"Sending request to Ollama with model {ollama_chat_model}")
         print(f"Ollama Payload: {json.dumps(ollama_payload, indent=2)}") # Log the exact payload
         
-        # ---> Log before request
-        print("--- Sending request to Ollama...")
-        ollama_response = requests.post(OLLAMA_API_URL.replace("/generate", "/chat"), json=ollama_payload, timeout=60) # Increased timeout
+        ollama_chat_url = "http://localhost:11434/api/chat"
+        print(f"--- Sending request to Ollama at URL: {ollama_chat_url}")
+        
+        ollama_response = requests.post(
+            ollama_chat_url,
+            json=ollama_payload,
+            timeout=60
+        )
         # ---> Log after request
         print(f"--- Received response from Ollama. Status code: {ollama_response.status_code}")
 
@@ -193,7 +202,15 @@ def calculate_score():
 
     try:
         print(f"Sending evaluation request to Ollama...")
-        ollama_response = requests.post(f"{OLLAMA_API_URL.replace('/generate', '/chat')}", json=ollama_payload, timeout=90) # Longer timeout for evaluation
+        ollama_chat_url = "http://localhost:11434/api/chat"
+        print(f"Evaluation request to Ollama at URL: {ollama_chat_url}")
+        print(f"Evaluation payload: {json.dumps(ollama_payload, indent=2)}")
+        
+        ollama_response = requests.post(
+            ollama_chat_url,
+            json=ollama_payload, 
+            timeout=90
+        )
         ollama_response.raise_for_status()
 
     except requests.exceptions.RequestException as e:
@@ -217,16 +234,50 @@ def calculate_score():
         if not isinstance(evaluation_result.get('score'), int):
              raise ValueError("Score must be an integer.")
 
+        evaluation_result['comment'] = 'お疲れ様でした！'
         print(f"Parsed evaluation: {evaluation_result}")
         return jsonify(evaluation_result)
 
     except json.JSONDecodeError as e:
         print(f"Error decoding JSON evaluation from Ollama: {e}\nRaw content: {response_content}")
         # Fallback: Try to return something generic if JSON parsing fails but text exists
-        return jsonify({'score': 0, 'review': '評価取得エラー', 'feedback': f'モデル応答の解析に失敗しました: {response_content}'})
+        return jsonify({'score': 0, 'review': '評価取得エラー', 'feedback': f'モデル応答の解析に失敗しました: {response_content}', 'comment': 'お疲れ様でした！'})
     except (KeyError, ValueError, Exception) as e:
         print(f"Error processing Ollama evaluation response: {e}\nRaw content: {response_content}")
-        return jsonify({'score': 0, 'review': '評価処理エラー', 'feedback': f'評価結果の処理中にエラーが発生しました: {e}'})
+        return jsonify({'score': 0, 'review': '評価処理エラー', 'feedback': f'評価結果の処理中にエラーが発生しました: {e}', 'comment': 'お疲れ様でした！'})
+
+@app.route('/save-ranking', methods=['POST'])
+def save_ranking():
+    data = request.get_json()
+    name = data.get('name', '名無し')
+    score = data.get('score', 0)
+    timestamp = datetime.now().isoformat()
+    entry = {'name': name, 'score': score, 'timestamp': timestamp}
+    try:
+        if os.path.exists(RANKING_FILE):
+            with open(RANKING_FILE, 'r', encoding='utf-8') as f:
+                ranking = json.load(f)
+        else:
+            ranking = []
+        ranking.append(entry)
+        ranking.sort(key=lambda x: x['score'], reverse=True)
+        with open(RANKING_FILE, 'w', encoding='utf-8') as f:
+            json.dump(ranking, f, ensure_ascii=False, indent=2)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/get-ranking', methods=['GET'])
+def get_ranking():
+    try:
+        if os.path.exists(RANKING_FILE):
+            with open(RANKING_FILE, 'r', encoding='utf-8') as f:
+                ranking = json.load(f)
+        else:
+            ranking = []
+        return jsonify({'ranking': ranking})
+    except Exception as e:
+        return jsonify({'ranking': [], 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
